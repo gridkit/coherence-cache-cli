@@ -31,7 +31,7 @@ public class BinaryCacheConnector {
 
 	private static AtomicInteger COUNTER = new AtomicInteger();
 	
-	private List<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
+	private List<RemoteAddress> addresses = new ArrayList<RemoteAddress>();
 	private XmlElement configTemplate;
 	private int id = COUNTER.getAndIncrement();
 	private CacheService service;
@@ -41,7 +41,7 @@ public class BinaryCacheConnector {
 	}
 
 	public void addRemoteAddress(String host, int port) {
-		addresses.add(new InetSocketAddress(host, port));
+		addresses.add(new RemoteAddress(host, port));
 	}
 
 	public NamedCache getCache(String cacheName) {
@@ -76,9 +76,9 @@ public class BinaryCacheConnector {
 		XmlElement root = XmlHelper.loadXml(configTemplate.toString());
 		root.ensureElement("service-name").setString(getClass().getSimpleName() + "-" + id);
 		XmlElement ralist = root.ensureElement("initiator-config/tcp-initiator/remote-addresses");
-		for(InetSocketAddress ra: addresses) {
+		for(RemoteAddress ra: addresses) {
 			XmlElement addr = ralist.addElement("socket-address");
-			addr.addElement("address").setString(ra.getHostName());
+			addr.addElement("address").setString(ra.getHost());
 			addr.addElement("port").setInt(ra.getPort());
 		}
 		
@@ -101,6 +101,25 @@ public class BinaryCacheConnector {
 		root.ensureElement("defer-key-association-check").setString("true");
 		
 		return root;
+	}
+	
+	private static class RemoteAddress {
+		
+		private final String host;
+		private final int port;
+
+		public RemoteAddress(String host, int port) {
+			this.host = host;
+			this.port = port;
+		}
+
+		public String getHost() {
+			return host;
+		}
+
+		public int getPort() {
+			return port;
+		}
 	}
 	
 	@SuppressWarnings({"rawtypes", "unchecked"})
@@ -220,17 +239,17 @@ public class BinaryCacheConnector {
 		}
 
 		@Override
-		public Set getEntrySet() {
+		public Set binaryEntrySet() {
 			return delegate.getEntrySet();
 		}
 
 		@Override
-		public Set getKeySet() {
+		public Set binaryKeySet() {
 			return delegate.getKeySet();
 		}
 
 		@Override
-		public Collection getValues() {
+		public Collection binaryValues() {
 			return delegate.getValues();
 		}
 

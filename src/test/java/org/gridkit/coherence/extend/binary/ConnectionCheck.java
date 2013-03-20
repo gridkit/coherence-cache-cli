@@ -58,7 +58,7 @@ public class ConnectionCheck {
 		System.setProperty("tangosol.pof.enabled", "true");
 		
 		BinaryCacheConnector connector = new BinaryCacheConnector();
-		connector.addRemoteAddress("host", 9180);
+		connector.addRemoteAddress("longmrdfappu1.uk.db.com", 20220);
 		connector.connect();
 //		NamedCache cache = connector.getCache("RISK_GROUP");
 //		NamedCache cache = connector.getCache("DICTIONARY");

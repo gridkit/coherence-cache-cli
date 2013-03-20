@@ -27,4 +27,10 @@ public class BinCacheTool {
 		public String nextCo
 		
 	}
+	
+	private static class CommandLine {
+		
+		private List
+		
+	}
 }

@@ -16,13 +16,13 @@ public interface BinaryCache extends NamedCache {
 
 	public Channel getChannel();
 
-	public Set<Binary> getEntrySet();
+	public Set<Binary> binaryEntrySet();
 
-	public Set<Binary> getKeySet();
+	public Set<Binary> binaryKeySet();
 
 	PartialResponse keySetPage(Binary cookie);
 
-	public Collection<Binary> getValues();
+	public Collection<Binary> binaryValues();
 
 	public Object put(Binary oKey, Binary oValue, long cMillis, boolean fReturn);
 
