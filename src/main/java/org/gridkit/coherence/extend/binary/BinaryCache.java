@@ -7,6 +7,7 @@ import com.tangosol.coherence.component.net.extend.message.response.PartialRespo
 import com.tangosol.net.NamedCache;
 import com.tangosol.net.messaging.Channel;
 import com.tangosol.util.Binary;
+import com.tangosol.util.Filter;
 
 public interface BinaryCache extends NamedCache {
 
@@ -19,6 +20,8 @@ public interface BinaryCache extends NamedCache {
 	public Set<Binary> binaryEntrySet();
 
 	public Set<Binary> binaryKeySet();
+
+	public Set<Binary> binaryKeySet(Filter f);
 
 	PartialResponse keySetPage(Binary cookie);
 

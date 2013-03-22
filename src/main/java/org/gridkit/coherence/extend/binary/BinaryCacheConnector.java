@@ -1,7 +1,6 @@
 package org.gridkit.coherence.extend.binary;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -246,6 +245,11 @@ public class BinaryCacheConnector {
 		@Override
 		public Set binaryKeySet() {
 			return delegate.getKeySet();
+		}
+
+		@Override
+		public Set binaryKeySet(Filter filter) {
+			return delegate.keySet(filter);
 		}
 
 		@Override
