@@ -21,6 +21,7 @@ import java.util.zip.ZipOutputStream;
 import org.gridkit.coherence.extend.binary.BinaryCache;
 import org.gridkit.coherence.extend.binary.BinaryCacheConnector;
 import org.gridkit.coherence.extend.binary.BlobSerializer;
+import org.gridkit.coherence.misc.pofviewer.PofCompactPrinter;
 import org.gridkit.coherence.misc.pofviewer.PofEntry;
 import org.gridkit.coherence.misc.pofviewer.PofFinePrinter;
 import org.gridkit.coherence.misc.pofviewer.PofParser;
@@ -248,7 +249,7 @@ public class CacheCli {
 		
 		public String printObject(Object bin) {
 			if (printPof) {
-				return printPof((Binary)bin);
+				return printCompactPof((Binary)bin);
 			}
 			else {
 				return String.valueOf(bin);
@@ -278,6 +279,15 @@ public class CacheCli {
 			sb.setLength(sb.length() - 1);
 
 			return sb.toString();
+		}
+
+		public String printCompactPof(Binary bin) {
+			List<PofEntry> entries = PofParser.parsePof(bin, new BlobSerializer());
+			
+			PofFinePrinter fp = new PofFinePrinter();
+			PofCompactPrinter cp = new PofCompactPrinter(fp); 
+						
+			return cp.format(entries);
 		}
 	}	
 	
