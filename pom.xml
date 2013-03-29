@@ -40,6 +40,7 @@
         <pof-viewer.version>0.2</pof-viewer.version>
         <chtest.version>0.2</chtest.version>
         <junit.version>4.10</junit.version>
+        <reflection-pof-serializer.version>1.4</reflection-pof-serializer.version>
         <slf4j.version>1.6.0</slf4j.version>
     </properties>
 
@@ -82,7 +83,7 @@
         <dependency>
             <groupId>org.gridkit.coherence.utils</groupId>
             <artifactId>reflection-pof-serializer</artifactId>
-            <version>1.4-SNAPSHOT</version>
+            <version>${reflection-pof-serializer.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
