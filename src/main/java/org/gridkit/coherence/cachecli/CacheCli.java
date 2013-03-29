@@ -40,7 +40,7 @@ import com.tangosol.util.filter.PartitionedFilter;
 
 public class CacheCli {
 
-	@Parameter(names = {"--help"}, help = true)
+	@Parameter(names = {"--help"}, help = true, hidden = true, description = "Display help")
 	private boolean help;
 
 	@Parameter(names = {"-c", "--cache"}, description = "Target cache URL. E.g. extend://host:port/CachName", required = true)
@@ -77,30 +77,51 @@ public class CacheCli {
 				parser.parse(args);
 			}
 			catch(Exception e) {
+				System.err.println(e.toString());
+				String cmd = parser.getParsedCommand();
 				parser.usage();
-				error(e.toString());
+				error("");
 			}
 
-			Cmd cmd = commands.get(parser.getParsedCommand());
-			
-			if (cmd == null) {
-				parser.usage();
-				if (suppressSystemExit) {
-					return false;
+			if (help) {
+				String cmd = parser.getParsedCommand();
+				if (cmd == null) { 
+					parser.usage();
 				}
 				else {
-					System.exit(1);
+					parser.usage(cmd);
+				}
+				
+				if (suppressSystemExit) {
+					return true;
+				}
+				else {
+					System.exit(0);
 				}
 			}
 			else {
-				cmd.exec();
-			}
 			
-			if (suppressSystemExit) {
-				return true;
-			}
-			else {
-				System.exit(0);
+				Cmd cmd = commands.get(parser.getParsedCommand());
+				
+				if (cmd == null) {
+					parser.usage();
+					if (suppressSystemExit) {
+						return false;
+					}
+					else {
+						System.exit(1);
+					}
+				}
+				else {
+					cmd.exec();
+				}
+				
+				if (suppressSystemExit) {
+					return true;
+				}
+				else {
+					System.exit(0);
+				}
 			}
 		}
 		catch(AbnormalExitError e) {
@@ -199,18 +220,20 @@ public class CacheCli {
 		}
 	}
 	
+	public static enum ListType {
+		KEYS,
+		ENTRIES,
+		VALUES
+	}
+	
 	@Parameters(commandDescription = "List keys in cache")
 	public class ListCmd implements Cmd {
 
 		@Parameter(names = {"-pp", "--parse-pof"}, description = "Print POF structure")
 		private boolean printPof = false;
 		
-		@Parameter(names = {"-v", "--values"}, description = "List values, not keys")
-		private boolean valueMode = false;
-
-		@Parameter(names = {"-e", "--entries"}, description = "List entries, not keys")
-		private boolean entryMode = false;
-
+		@Parameter(names = {"-s", "--show"}, description = "What to display [keys, values, entries]")
+		private ListType mode = ListType.KEYS;
 		
 		@Override
 		public void exec() {
@@ -229,13 +252,13 @@ public class CacheCli {
 				cache = getObjectCache();
 			}
 
-			if (entryMode) {
+			if (mode == ListType.ENTRIES) {
 				for(Object entry: cache.entrySet()) {
 					Map.Entry<?, ?> e = (Entry<?, ?>) entry;
 					System.out.println(printObject(e.getKey()) + " --> " + printObject(e.getValue()));
 				}				
 			}
-			else if (valueMode) {
+			else if (mode == ListType.VALUES) {
 				for(Object value: cache.values()) {
 					System.out.println(printObject(value));
 				}				
@@ -434,7 +457,6 @@ public class CacheCli {
 			}
 		}		
 
-		@SuppressWarnings("unchecked")
 		private int dump(BinaryCache cache, Map<Binary, Binary> buffer) {
 			int size = buffer.size();
 			cache.putAll(buffer);
