@@ -78,7 +78,6 @@ public class CacheCli {
 			}
 			catch(Exception e) {
 				System.err.println(e.toString());
-				String cmd = parser.getParsedCommand();
 				parser.usage();
 				error("");
 			}
