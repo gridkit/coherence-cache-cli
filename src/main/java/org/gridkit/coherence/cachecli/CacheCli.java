@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
@@ -42,6 +43,7 @@ import org.gridkit.coherence.misc.pofviewer.PofFinePrinter;
 import org.gridkit.coherence.misc.pofviewer.PofParser;
 import org.gridkit.coherence.misc.pofviewer.PofPath;
 
+import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
@@ -50,6 +52,8 @@ import com.tangosol.io.pof.PortableException;
 import com.tangosol.net.NamedCache;
 import com.tangosol.net.partition.PartitionSet;
 import com.tangosol.util.Binary;
+import com.tangosol.util.Filter;
+import com.tangosol.util.QueryHelper;
 import com.tangosol.util.filter.AlwaysFilter;
 import com.tangosol.util.filter.PartitionedFilter;
 
@@ -168,11 +172,15 @@ public class CacheCli {
 		throw new Error("Unreachable");
 	}
 	
-	private void error(String message) {
+	static void error(String message) {
 		System.err.println(message);
 		throw new AbnormalExitError();		
 	}
 
+	static void log(String message) {
+		System.out.println(message);
+	}
+	
 	protected BinaryCache getBinaryCache() {
 		try {
 			URI uri = new URI(cacheUrl);
@@ -328,10 +336,65 @@ public class CacheCli {
 		}
 	}	
 	
-	public class Filter {
+	public class FilterInfo {
 		
+		@Parameter(names = {"-q", "--cohql"}, required = false, description = "CohQL filter expression")
+		private String cohql;
+		
+		
+		public Filter getFilter() {
+			if (cohql == null) {
+				return null;
+			}
+			else {
+				try {
+					return QueryHelper.createFilter(cohql);
+				}
+				catch(Exception e) {
+					error("Cannot parse '" + cohql + "' - " + e.getMessage());
+					return null;
+				}
+			}
+		}
 	}
 
+	public static class PartitionListConverter implements IStringConverter<List<Integer>> {
+
+		@Override
+		public List<Integer> convert(String value) {
+			List<Integer> result = new ArrayList<Integer>();
+			try {
+				String[] split = value.split("[,]");
+				for(String part: split) {
+					if (part.indexOf('-') > 0) {
+						String[] range = part.split("-");
+						if (range.length != 2) {
+							error("Invalid partition list \"" + value + "\"");
+							return null;
+						}
+						int l = Integer.parseInt(range[0]);
+						int r = Integer.parseInt(range[1]);
+						if (r < l) {
+							error("Invalid partition list \"" + value + "\"");
+							return null;
+						}
+						for(int i = l; i != r+1; ++i) {
+							result.add(i);
+						}
+					}				
+					else {
+						result.add(Integer.parseInt(part));
+					}
+				}
+			}
+			catch(NumberFormatException e) {
+				error("Invalid partition list \"" + value + "\"");
+				return null;
+			}
+			return result;
+		}
+	}
+	
 	@Parameters(commandDescription = "Export binary cache content to a file")
 	public class ExportCmd implements Cmd {
 
@@ -341,8 +404,14 @@ public class CacheCli {
 		@Parameter(names = {"-bl", "--batch-limit"})
 		private int batchLimit = 128;
 		
-		@Parameter(names = {"-pb", "--partition-block"}, description = "Max number of paration to query")
+		@Parameter(names = {"-pb", "--partition-block"}, description = "Max number of parations in one query")
 		private int partitionBlock = 0;
+		
+		@Parameter(names = {"-p", "--partitions"}, listConverter = PartitionListConverter.class, description = "Subset of partitions to export")
+		private List<Integer> partitions = null; 
+		
+		@ParametersDelegate
+		private FilterInfo filter = new FilterInfo();
 		
 		@Override
 		public void exec() {
@@ -354,6 +423,56 @@ public class CacheCli {
 				partitionBlock = (16 * batchLimit) / partEst;
 				partitionBlock = partitionBlock > 0 ? partitionBlock : 1; 
 			}
+			int size;
+			if (partitions == null) {
+				size = exportAll(filter.getFilter(), buffer, cache);
+			}
+			else {
+				List<Integer> tp = new ArrayList<Integer>(new TreeSet<Integer>(partitions));
+				size = exportPartitions(filter.getFilter(), buffer, cache, tp);
+			}
+			try {
+				sink.close();
+				System.out.println("Entry count: " + size);
+			} catch (IOException e) {
+				error(e.toString());
+			}
+		}
+
+		protected int exportPartitions(Filter mask, List<Binary> buffer, BinaryCache cache, List<Integer> partitions) {
+			int size = 0;
+			int max = partitions.get(partitions.size() - 1);
+			while(!partitions.isEmpty()) {
+				PartitionSet ps = new PartitionSet(max + 1);
+				for(int i = 0; i != partitionBlock && !partitions.isEmpty(); ++i) {
+					ps.add(partitions.remove(0));
+				}
+				PartitionedFilter filter = new PartitionedFilter(mask == null ? AlwaysFilter.INSTANCE : mask, ps);
+				Set<Binary> keys;
+				try {
+					keys = new HashSet<Binary>(cache.binaryKeySet(filter));
+				}
+				catch(PortableException e) {
+					error(e.toString());
+					throw new Error("Unreachable");
+				}
+				log("  Read partitions " + ps + " - " + keys.size() + " entries");
+				if (!keys.isEmpty()) {
+					Iterator<Binary> it = keys.iterator();
+					while(it.hasNext()) {
+						if (buffer.size() > batchLimit) {
+							size += dump(cache, buffer);
+						}
+						buffer.add(it.next());
+						it.remove();
+					}
+					size += dump(cache, buffer);
+				}
+			}
+			return size;
+		}		
+
+		protected int exportAll(Filter mask, List<Binary> buffer, BinaryCache cache) {
 			int p = 0;
 			int size = 0;
 			while(true) {
@@ -361,7 +480,7 @@ public class CacheCli {
 				for(int i = 0; i != partitionBlock; ++i) {
 					ps.add(p + i);
 				}
-				PartitionedFilter filter = new PartitionedFilter(AlwaysFilter.INSTANCE, ps);
+				PartitionedFilter filter = new PartitionedFilter(mask == null ? AlwaysFilter.INSTANCE : mask, ps);
 				Set<Binary> keys;
 				try {
 					keys = new HashSet<Binary>(cache.binaryKeySet(filter));
@@ -382,7 +501,7 @@ public class CacheCli {
 						throw new Error("Unreachable");
 					}
 				}
-				System.out.println("Partitions [" + p + "-" + (p + partitionBlock - 1) + "] - " + keys.size());
+				log("  Read partitions " + ps + " - " + keys.size() + " entries");
 				if (!keys.isEmpty()) {
 					Iterator<Binary> it = keys.iterator();
 					while(it.hasNext()) {
@@ -395,13 +514,8 @@ public class CacheCli {
 					size += dump(cache, buffer);
 				}
 				p += partitionBlock;
-			}		
-			try {
-				sink.close();
-				System.out.println("Entry count: " + size);
-			} catch (IOException e) {
-				error(e.toString());
 			}
+			return size;
 		}		
 
 		@SuppressWarnings("unchecked")
