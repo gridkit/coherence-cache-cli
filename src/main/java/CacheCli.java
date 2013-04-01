@@ -21,6 +21,7 @@
 public class CacheCli {
 	
 	public static void main(String[] args) {
+		System.setProperty("tangosol.coherence.log.level", "1");
 		org.gridkit.coherence.cachecli.CacheCli.main(args);
 	}
 }

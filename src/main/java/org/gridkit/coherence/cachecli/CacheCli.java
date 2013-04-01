@@ -54,6 +54,7 @@ import com.tangosol.net.partition.PartitionSet;
 import com.tangosol.util.Binary;
 import com.tangosol.util.Filter;
 import com.tangosol.util.QueryHelper;
+import com.tangosol.util.aggregator.Count;
 import com.tangosol.util.filter.AlwaysFilter;
 import com.tangosol.util.filter.PartitionedFilter;
 
@@ -233,12 +234,42 @@ public class CacheCli {
 		void exec();
 	}
 	
+	public class FilterInfo {
+		
+		@Parameter(names = {"-q", "--cohql"}, required = false, description = "CohQL filter expression")
+		private String cohql;
+		
+		
+		public Filter getFilter() {
+			if (cohql == null) {
+				return null;
+			}
+			else {
+				try {
+					return QueryHelper.createFilter(cohql);
+				}
+				catch(Exception e) {
+					error("Cannot parse '" + cohql + "' - " + e.getMessage());
+					return null;
+				}
+			}
+		}
+	}
+
 	@Parameters(commandDescription = "Show size of cache")
 	public class SizeCmd implements Cmd {
 
+		@ParametersDelegate
+		private FilterInfo filter = new FilterInfo();
+		
 		@Override
 		public void exec() {
-			System.out.println(getObjectCache().size());
+			if (filter.getFilter() != null) {
+				System.out.println(getObjectCache().aggregate(filter.getFilter(), new Count()));
+			}
+			else {
+				System.out.println(getObjectCache().size());
+			}
 		}
 	}
 	
@@ -257,6 +288,9 @@ public class CacheCli {
 		@Parameter(names = {"-s", "--show"}, description = "What to display [keys, values, entries]")
 		private ListType mode = ListType.KEYS;
 		
+		@ParametersDelegate
+		private FilterInfo filter = new FilterInfo();
+		
 		@Override
 		public void exec() {
 			
@@ -273,20 +307,26 @@ public class CacheCli {
 			else {
 				cache = getObjectCache();
 			}
+			
+			Filter mask = filter.getFilter();
+			if (mask == null) {
+				mask = AlwaysFilter.INSTANCE;
+			}
 
 			if (mode == ListType.ENTRIES) {
-				for(Object entry: cache.entrySet()) {
+				for(Object entry: cache.entrySet(mask)) {
 					Map.Entry<?, ?> e = (Entry<?, ?>) entry;
 					System.out.println(printObject(e.getKey()) + " --> " + printObject(e.getValue()));
 				}				
 			}
 			else if (mode == ListType.VALUES) {
-				for(Object value: cache.values()) {
-					System.out.println(printObject(value));
+				for(Object entry: cache.entrySet(mask)) {
+					Entry<?, ?> e = (Map.Entry<?, ?>)entry;
+					System.out.println(printObject(e.getValue()));
 				}				
 			}
 			else {
-				for(Object key: cache.keySet()) {
+				for(Object key: cache.keySet(mask)) {
 					System.out.println(printObject(key));
 				}				
 			}
@@ -336,28 +376,6 @@ public class CacheCli {
 		}
 	}	
 	
-	public class FilterInfo {
-		
-		@Parameter(names = {"-q", "--cohql"}, required = false, description = "CohQL filter expression")
-		private String cohql;
-		
-		
-		public Filter getFilter() {
-			if (cohql == null) {
-				return null;
-			}
-			else {
-				try {
-					return QueryHelper.createFilter(cohql);
-				}
-				catch(Exception e) {
-					error("Cannot parse '" + cohql + "' - " + e.getMessage());
-					return null;
-				}
-			}
-		}
-	}
-
 	public static class PartitionListConverter implements IStringConverter<List<Integer>> {
 
 		@Override
