@@ -162,7 +162,7 @@
                             <artifactSet>
                                 <includes>
                                     <include>com.beust:*</include>
-                                    <include>lorg.gridkit.coherence-tools:pof-viewer</include>
+                                    <include>org.gridkit.coherence-tools:pof-viewer</include>
                                 </includes>
                             </artifactSet>
                             <transformers>
