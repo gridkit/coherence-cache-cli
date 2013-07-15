@@ -43,7 +43,7 @@ public class ExtendConnection {
 	private static AtomicInteger CONNECTION_COUNTER = new AtomicInteger();
 
 	private int connectionId = CONNECTION_COUNTER.incrementAndGet();
-	private ConfigurableCacheFactory cacheFactory;
+	private DefaultConfigurableCacheFactory cacheFactory;
 	
 	/**
 	 * @param configFile - path to XML cache configuration file (e.g. cache-config.xml)
