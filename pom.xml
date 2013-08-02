@@ -30,9 +30,9 @@
     <description>Simple CLI tools for basic cache operations with Coherence</description>
 
     <scm>
-        <connection>scm:svn:https://gridkit.googlecode.com/svn/coherence-tools/trunk/chtest</connection>
-        <developerConnection>scm:svn:https://gridkit.googlecode.com/svn/coherence-tools/trunk/chtest</developerConnection>
-        <url>http://gridkit.googlecode.com/svn/coherence-tools/trunk/chtest</url>
+        <connection>scm:git:https://github.com/gridkit/coherence-cache-cli.git</connection>
+        <developerConnection>scm:git:https://github.com/gridkit/coherence-cache-cli.git</developerConnection>
+        <url>https://github.com/gridkit/coherence-cache-cli</url>
     </scm>
 
     <properties>
